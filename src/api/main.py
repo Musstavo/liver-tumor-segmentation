@@ -54,53 +54,37 @@ async def upload_scan(
 ):
     init_db()
 
-    # 1. Setup Paths
     upload_dir = "data/scans"
     os.makedirs(upload_dir, exist_ok=True)
 
     safe_filename = my_upload.filename or "unknown.nii"
-    # Original file path
     original_file_location = f"{upload_dir}/{safe_filename}"
 
-    # 2. Save Raw Upload
     async with aiofiles.open(original_file_location, "wb") as out_file:
         while content := await my_upload.read(1024 * 1024):
             await out_file.write(content)
 
-    # 3. Create a NEW path for the processed file
-    # We prefix it with 'fixed_' to avoid the Bus Error collision
     fixed_filename = f"fixed_{safe_filename}"
     fixed_file_location = f"{upload_dir}/{fixed_filename}"
 
-    # ==========================================
-    # STEP 3.5: SAFE ORIENTATION FIX
-    # ==========================================
     try:
-        # Load from the ORIGINAL path
         nifti_img = nib.load(original_file_location)
 
-        # Force RAS Orientation
         canonical_img = nib.as_closest_canonical(nifti_img)
 
-        # SAVE TO THE NEW PATH (Crucial Fix!)
         nib.save(canonical_img, fixed_file_location)
         print(f"✅ Sanitized to: {fixed_filename}")
 
-        # Clear memory
         del nifti_img
         del canonical_img
         gc.collect()
 
     except Exception as e:
         print(f"⚠️ Orientation fix failed: {e}")
-        # If fix fails, just use the original file
         fixed_file_location = original_file_location
 
-    # ==========================================
 
     mask_location = None
-
-    # 4. Run AI on the FIXED file path
     if AI_MODEL:
         try:
             print(f"Processing {fixed_filename}...")
@@ -124,7 +108,6 @@ async def upload_scan(
         procedure = "System Offline"
         liver_vol, tumor_vol, tumor_pct = 0.0, 0.0, 0.0
 
-    # 5. Save to DB
     new_scan = models.Scan(
         patient_id=safe_filename.split(".")[0],
         filename=safe_filename,
@@ -138,7 +121,6 @@ async def upload_scan(
     saved_scan = crud.create_scan(session=session, scan=new_scan)
 
     response_data = saved_scan.dict()
-    # Return the FIXED path to the frontend so visualization is correct
     response_data["original_file_path"] = fixed_file_location
     response_data["mask_file_path"] = mask_location if mask_location else ""
 
