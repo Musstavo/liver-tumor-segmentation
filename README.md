@@ -81,7 +81,7 @@ The pipeline was evaluated on diverse validation sets.
 ### 1. Clone & Setup
 
 ```bash
-git clone [https://github.com/Musstavo/Liver-Tumor-Segmentation.git](https://github.com/Musstavo/Liver-Tumor-Segmentation.git)
+git clone https://github.com/Musstavo/Liver-Tumor-Segmentation.git
 cd Liver-Tumor-Segmentation
 
 # Create Virtual Environment
